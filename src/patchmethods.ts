@@ -1,0 +1,183 @@
+/*
+ * Crankshaft-Custom-Keyboards, a custom keyboard plugin for Crankshaft
+ * Copyright (C) 2022 Steven "Drakia" Scott
+ * 
+ * Distributed under the GNU GPL v3. For full terms see the file LICENSE.
+ */
+
+import { SMM } from '../types/smm';
+import { CustomKeyboards } from './customkeyboards';
+import { FileUtils } from './fileutils';
+import { PLUGIN_ID } from './index';
+
+export class PatchMethods {
+  private smm: SMM;
+  private keyboards: CustomKeyboards;
+
+  userProfileStore: typeof window.userProfileStore;
+  _GetKeyboardSkins: typeof window.userProfileStore.GetKeyboardSkins;
+  _EquipKeyboardSkin: typeof window.userProfileStore.EquipKeyboardSkin;
+  _GetKeyboardSkinTheme: typeof window.userProfileStore.GetKeyboardSkinTheme;
+  _ForceRefreshEquippedItems: typeof window.userProfileStore.ForceRefreshEquippedItems;
+
+  constructor(smm: SMM, keyboards: CustomKeyboards, userProfileStore: any) {
+    console.log('CCK::PatchMethods::constructor');
+
+    this.smm = smm;
+    this.keyboards = keyboards;
+    this.userProfileStore = userProfileStore;
+
+    // Store original copies of the keyboard skin functions, so we can revert them on unload
+    this._GetKeyboardSkins = userProfileStore.GetKeyboardSkins;
+    this._EquipKeyboardSkin = userProfileStore.EquipKeyboardSkin;
+    this._GetKeyboardSkinTheme = userProfileStore.GetKeyboardSkinTheme;
+    this._ForceRefreshEquippedItems = userProfileStore.ForceRefreshEquippedItems;
+  }
+
+  patchUserProfileStore() {
+    console.log('CCK::PatchMethods::patchUserProfileStore');
+
+    // Override the keyboard skin functions with our own
+    this.userProfileStore.GetKeyboardSkins = this.CustomGetKeyboardSkins;
+    this.userProfileStore.EquipKeyboardSkin = this.CustomEquipKeyboardSkin;
+    this.userProfileStore.GetKeyboardSkinTheme = this.CustomGetKeyboardSkinTheme;
+    this.userProfileStore.ForceRefreshEquippedItems = this.CustomForceRefreshEquippedItems;
+
+    // Force a refresh of the keyboard list in Settings
+    this.userProfileStore.m_keyboardSkins = undefined;
+
+    // If we have an equipped keyboard, force an item refresh and equip it
+    if (this.keyboards.getCustomKeyboard()) {
+      this.userProfileStore.ForceRefreshEquippedItems();
+      this.userProfileStore.EquipKeyboardSkin(this.keyboards.getCustomKeyboard());
+    }
+  }
+
+  unpatchUserProfileStore() {
+    console.log('CCK::PatchMethods::unpatchUserProfileStore');
+
+    // Restore the original keyboard skin functions
+    this.userProfileStore.GetKeyboardSkins = this._GetKeyboardSkins;
+    this.userProfileStore.EquipKeyboardSkin = this._EquipKeyboardSkin;
+    this.userProfileStore.GetKeyboardSkinTheme = this._GetKeyboardSkinTheme;
+    this.userProfileStore.ForceRefreshEquippedItems = this._ForceRefreshEquippedItems;
+
+    // Force a refresh of the keyboards
+    this.userProfileStore.m_keyboardSkins = undefined;
+    this._ForceRefreshEquippedItems.call(this.userProfileStore);
+  }
+
+  CustomGetKeyboardSkins = () => {
+    console.log('CCK::PatchMethods::CustomGetKeyboardSkins');
+
+    // Re-implement the original GetKeyboardSkins, but inject our skins into the list after fetching
+    // the owned profile items
+    if (!this.userProfileStore.m_keyboardSkins) {
+      this.userProfileStore.m_keyboardSkins = [];
+      this.userProfileStore.GetProfileItemsOwned([16]).then((profileItems) => {
+        if (profileItems) {
+          var keyboardSkins = profileItems.steam_deck_keyboard_skins;
+          this.keyboards.getKeyboardEntries().forEach((keyboard) => {
+            keyboardSkins.push({
+              communityitemid: 'cck_' + keyboard.class,
+              item_title: keyboard.name,
+            });
+          });
+
+          this.userProfileStore.m_keyboardSkins = keyboardSkins;
+          this.userProfileStore.m_localStorage.StoreObject('GetKeyboardSkins', this.userProfileStore.m_keyboardSkins);
+        } else {
+          this.userProfileStore.m_localStorage.GetObject('GetKeyboardSkins').then((e) => {
+            this.userProfileStore.m_keyboardSkins = e;
+          });
+        }
+      });
+    }
+    return this.userProfileStore.m_keyboardSkins;
+  };
+
+  CustomEquipKeyboardSkin = (skinId: string): Promise<boolean> => {
+    console.log('CCK::PatchMethods::CustomEquipKeyboardSkin');
+
+    // Clear any CSS we've injected
+    document.getElementById('cck_style')?.remove();
+
+    // If the skin ID starts with 'cck_', it's a custom keyboard
+    if (skinId.startsWith('cck_')) {
+      return new Promise<boolean>(async (resolve) => {
+        // Try to find the target keyboard in our keyboard entries list
+        const selectedKeyboard = this.keyboards.getKeyboardEntries().filter((keyboard) => {
+          return keyboard.class == skinId.substring(4);
+        });
+
+        // If we were able to find it, inject its CSS into the page, and set the custom keyboard
+        if (selectedKeyboard.length > 0) {
+          FileUtils.readFile(this.smm, selectedKeyboard[0]['cssPath'])
+            .then(async (css) => {
+              // Create and apply the <style> tag
+              const style = document.createElement('style');
+              style.id = 'cck_style';
+              document.head.append(style);
+              style.textContent = css;
+
+              // Update the stored custom keyboard
+              this.keyboards.setCustomKeyboard(skinId);
+              await this.smm.Store.set(PLUGIN_ID, 'customKeyboard', skinId);
+
+              resolve(true);
+            })
+            .catch((err) => {
+              console.log('CCK::Error loading keyboard CSS: ', err);
+              resolve(false);
+            });
+        } else {
+          // If we couldn't find the selected keyboard, clear the custom keyboard
+          this.keyboards.setCustomKeyboard(undefined);
+          console.log('CCK::Error finding custom keyboard');
+          resolve(false);
+        }
+      });
+    } else {
+      // Otherwise, clear the custom keyboard, and fall back to the original implementation
+      this.keyboards.setCustomKeyboard(undefined);
+      return this._EquipKeyboardSkin.call(this.userProfileStore, skinId);
+    }
+  };
+
+  CustomGetKeyboardSkinTheme = (): string => {
+    console.log('CCK::PatchMethods::CustomGetKeyboardSkinTheme');
+
+    // If a custom keyboard is set, return its ID minus the 'cck_'
+    if (this.keyboards.getCustomKeyboard()) {
+      return this.keyboards.getCustomKeyboard().substring(4);
+    } else {
+      return this._GetKeyboardSkinTheme.call(this.userProfileStore);
+    }
+  };
+
+  CustomForceRefreshEquippedItems = (): void => {
+    console.log('CCK::PatchMethods::CustomForceRefreshEquippedItems');
+
+    // Call the base ForceRefreshEquippedItems, and hook into its promise
+    this._ForceRefreshEquippedItems.call(this.userProfileStore);
+
+    this.userProfileStore.m_promiseEquipped.then(() => {
+      // The m_equippedItems property is a Proxy, we'll add our own Proxy that watches for
+      // calls to 'steam_deck_keyboard_skin', which we can hijack to make the selected skin correct
+      // in the settings panel
+      this.userProfileStore.m_equippedItems = new Proxy(this.userProfileStore.m_equippedItems, {
+        get: (target, prop, receiver) => {
+          if (prop === 'steam_deck_keyboard_skin' && this.keyboards.getCustomKeyboard()) {
+            let keyboard = target.steam_deck_keyboard_skin;
+            keyboard.communityitemid = this.keyboards.getCustomKeyboard();
+
+            return keyboard;
+          }
+
+          // Any other property gets forwarded on to the original handler
+          return Reflect.get(target, prop, receiver);
+        },
+      });
+    });
+  };
+}

@@ -1,12 +1,12 @@
-name = "TODO"
-version = "TODO"
-link = "TODO"
-source = "TODO"
-min-crankshaft-version = "0.1.5"
+name = "Custom Keyboards"
+version = "0.0.1"
+link = "https://github.com/TheDgtl/crankshaft-custom-keyboards"
+source = "https://github.com/TheDgtl/crankshaft-custom-keyboards"
+min-crankshaft-version = "0.2.1"
 
 [author]
-name = "TODO"
-link = "TODO"
+name = "DrakiaXYZ"
+link = "https://github.com/TheDgtl/"
 
 [entrypoints]
 
@@ -15,6 +15,21 @@ link = "TODO"
 	menu = false
 
 	[entrypoints.deck]
-	library = false
+	library = true
 	menu = false
 	quick-access = false
+
+[store]
+description = """
+This plugin allows you to load custom keyboards directly in the Settings 
+menu.
+
+Keyboards are loaded from the ~/homebrew/keyboards/ folder, and consist
+of a simple JSON file, and CSS file, organised into folders.
+
+For example, an RGB keyboard maybe live in the following files:
+~/homebrew/keyboards/rgb/keyboard.json
+~/homebrew/keyboards/rgb/keyboard.css
+
+This plugin is only compatible with the gamepad/Steam Deck UI.
+"""
