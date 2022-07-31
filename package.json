@@ -1,14 +1,23 @@
 {
-  "name": "crankshaft-plugin-template",
-  "version": "0.1.0",
+  "name": "crankshaft-custom-keyboards",
+  "version": "0.0.1",
   "main": "dist/index.js",
   "author": "",
   "license": "GPL-3.0",
   "private": true,
+  "config": {
+    "//": "Modify this array to specify what to include in the generated tar.gz file",
+    "bundle": [
+      "dist",
+      "plugin.toml"
+    ]
+  },
   "scripts": {
     "format": "prettier src --write",
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js",
-    "build-watch": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --watch"
+    "build-watch": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --watch",
+    "package": "npm run build && tar cvf ${npm_package_name}-${npm_package_version}.tar.gz --transform \"s,^,${npm_package_name}/,\" `npm run --silent get-bundle`",
+    "get-bundle": "node -e \"var fs = require('fs'); var config = JSON.parse(fs.readFileSync('./package.json')); console.log(config.config.bundle.join(' '));\""
   },
   "dependencies": {},
   "devDependencies": {
