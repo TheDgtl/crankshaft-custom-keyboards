@@ -11,14 +11,11 @@ import { PatchMethods } from './patchmethods';
 
 export const PLUGIN_ID = 'crankshaft-custom-keyboards';
 
-let patchMethods: PatchMethods;
-let keyboards: CustomKeyboards;
-
 export const load = async (smm: SMM) => {
   console.log('CCK::load');
 
-  keyboards = new CustomKeyboards(smm);
-  patchMethods = new PatchMethods(smm, keyboards, window.userProfileStore);
+  const keyboards = CustomKeyboards.getInstance(smm);
+  const patchMethods = PatchMethods.getInstance(smm, keyboards, window.userProfileStore);
 
   // Load all of our keyboards
   keyboards.loadKeyboards().then(async () => {
@@ -29,16 +26,18 @@ export const load = async (smm: SMM) => {
     patchMethods.patchUserProfileStore();
 
     console.info('CCK::Loaded');
+  }).catch((err) => {
+    console.log('CCK::Error loading keyboards: ', err);
   });
 };
 
-export const unload = () => {
+export const unload = (smm: SMM) => {
   console.log('CCK::unload');
 
   // Restore the original keyboard skin functions
-  if (patchMethods) {
-    patchMethods.unpatchUserProfileStore();
-  }
+  const keyboards = CustomKeyboards.getInstance(smm);
+  const patchMethods = PatchMethods.getInstance(smm, keyboards, window.userProfileStore);
+  patchMethods.unpatchUserProfileStore();
 
   // Clear any CSS we've injected
   document.getElementById('cck_style')?.remove();

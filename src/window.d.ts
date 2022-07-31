@@ -5,10 +5,14 @@ declare global {
       GetKeyboardSkins: () => any;
       EquipKeyboardSkin: (skinId: string) => Promise<boolean>;
       GetKeyboardSkinTheme: () => string;
-      GetEquippedItems: (bForce: boolean) => any;
       ForceRefreshEquippedItems: () => void;
       GetProfileItemsOwned: (e: any) => Promise<any>;
-      GetEquippedProfileItemsForUser: (e: any) => Promise<any>;
+
+      // Backups of the original methods, incase we are run twice
+      _GetKeyboardSkins: any;
+      _EquipKeyboardSkin: any;
+      _GetKeyboardSkinTheme: any;
+      _ForceRefreshEquippedItems: any;
 
       m_equippedItems: any;
       m_keyboardSkins: any;

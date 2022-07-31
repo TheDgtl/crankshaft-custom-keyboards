@@ -13,25 +13,34 @@ import { PLUGIN_ID } from './index';
 export class PatchMethods {
   private smm: SMM;
   private keyboards: CustomKeyboards;
+  private static instance: PatchMethods;
 
   userProfileStore: typeof window.userProfileStore;
-  _GetKeyboardSkins: typeof window.userProfileStore.GetKeyboardSkins;
-  _EquipKeyboardSkin: typeof window.userProfileStore.EquipKeyboardSkin;
-  _GetKeyboardSkinTheme: typeof window.userProfileStore.GetKeyboardSkinTheme;
-  _ForceRefreshEquippedItems: typeof window.userProfileStore.ForceRefreshEquippedItems;
+  
+  // We use a singleton instance, because my vars in index.ts were being blown away on reload
+  static getInstance(smm: SMM, keyboards: CustomKeyboards, userProfileStore: typeof window.userProfileStore) {
+    if (!this.instance) {
+      this.instance = new PatchMethods(smm, keyboards, userProfileStore);
+    }
 
-  constructor(smm: SMM, keyboards: CustomKeyboards, userProfileStore: any) {
+    return this.instance;
+  }
+
+  constructor(smm: SMM, keyboards: CustomKeyboards, userProfileStore: typeof window.userProfileStore) {
     console.log('CCK::PatchMethods::constructor');
 
     this.smm = smm;
     this.keyboards = keyboards;
     this.userProfileStore = userProfileStore;
 
-    // Store original copies of the keyboard skin functions, so we can revert them on unload
-    this._GetKeyboardSkins = userProfileStore.GetKeyboardSkins;
-    this._EquipKeyboardSkin = userProfileStore.EquipKeyboardSkin;
-    this._GetKeyboardSkinTheme = userProfileStore.GetKeyboardSkinTheme;
-    this._ForceRefreshEquippedItems = userProfileStore.ForceRefreshEquippedItems;
+    // Store original copies of the keyboard skin functions, if they aren't already stored
+    // Note: We store these in the userProfileStore object, in case our plugin gets loaded twice
+    if (!userProfileStore._GetKeyboardSkins) {
+      userProfileStore._GetKeyboardSkins = userProfileStore.GetKeyboardSkins;
+      userProfileStore._EquipKeyboardSkin = userProfileStore.EquipKeyboardSkin;
+      userProfileStore._GetKeyboardSkinTheme = userProfileStore.GetKeyboardSkinTheme;
+      userProfileStore._ForceRefreshEquippedItems = userProfileStore.ForceRefreshEquippedItems;
+    }
   }
 
   patchUserProfileStore() {
@@ -57,14 +66,16 @@ export class PatchMethods {
     console.log('CCK::PatchMethods::unpatchUserProfileStore');
 
     // Restore the original keyboard skin functions
-    this.userProfileStore.GetKeyboardSkins = this._GetKeyboardSkins;
-    this.userProfileStore.EquipKeyboardSkin = this._EquipKeyboardSkin;
-    this.userProfileStore.GetKeyboardSkinTheme = this._GetKeyboardSkinTheme;
-    this.userProfileStore.ForceRefreshEquippedItems = this._ForceRefreshEquippedItems;
+    if (this.userProfileStore._GetKeyboardSkins) {
+      this.userProfileStore.GetKeyboardSkins = this.userProfileStore._GetKeyboardSkins;
+      this.userProfileStore.EquipKeyboardSkin = this.userProfileStore._EquipKeyboardSkin;
+      this.userProfileStore.GetKeyboardSkinTheme = this.userProfileStore._GetKeyboardSkinTheme;
+      this.userProfileStore.ForceRefreshEquippedItems = this.userProfileStore._ForceRefreshEquippedItems;
+    }
 
     // Force a refresh of the keyboards
     this.userProfileStore.m_keyboardSkins = undefined;
-    this._ForceRefreshEquippedItems.call(this.userProfileStore);
+    this.userProfileStore._ForceRefreshEquippedItems.call(this.userProfileStore);
   }
 
   CustomGetKeyboardSkins = () => {
@@ -133,14 +144,14 @@ export class PatchMethods {
         } else {
           // If we couldn't find the selected keyboard, clear the custom keyboard
           this.keyboards.setCustomKeyboard(undefined);
-          console.log('CCK::Error finding custom keyboard');
+          console.log('CCK::Error finding custom keyboard ', skinId);
           resolve(false);
         }
       });
     } else {
       // Otherwise, clear the custom keyboard, and fall back to the original implementation
       this.keyboards.setCustomKeyboard(undefined);
-      return this._EquipKeyboardSkin.call(this.userProfileStore, skinId);
+      return this.userProfileStore._EquipKeyboardSkin.call(this.userProfileStore, skinId);
     }
   };
 
@@ -151,7 +162,7 @@ export class PatchMethods {
     if (this.keyboards.getCustomKeyboard()) {
       return this.keyboards.getCustomKeyboard().substring(4);
     } else {
-      return this._GetKeyboardSkinTheme.call(this.userProfileStore);
+      return this.userProfileStore._GetKeyboardSkinTheme.call(this.userProfileStore);
     }
   };
 
@@ -159,7 +170,7 @@ export class PatchMethods {
     console.log('CCK::PatchMethods::CustomForceRefreshEquippedItems');
 
     // Call the base ForceRefreshEquippedItems, and hook into its promise
-    this._ForceRefreshEquippedItems.call(this.userProfileStore);
+    this.userProfileStore._ForceRefreshEquippedItems.call(this.userProfileStore);
 
     this.userProfileStore.m_promiseEquipped.then(() => {
       // The m_equippedItems property is a Proxy, we'll add our own Proxy that watches for

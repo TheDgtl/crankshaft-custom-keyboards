@@ -18,6 +18,16 @@ export class CustomKeyboards {
   private smm: SMM;
   private keyboardEntries: KeyboardEntry[] = [];
   private customKeyboard: string | undefined = undefined;
+  private static instance: CustomKeyboards;
+
+  // We use a singleton instance, because my vars in index.ts were being blown away on reload
+  static getInstance(smm: SMM) {
+    if (!this.instance) {
+      this.instance = new CustomKeyboards(smm);
+    }
+
+    return this.instance;
+  }
 
   constructor(smm: SMM) {
     console.log('CCK::CustomKeyboards::constructor');
@@ -39,30 +49,40 @@ export class CustomKeyboards {
   loadKeyboards = (): Promise<void> => {
     console.log('CCK::CustomKeyboards::loadKeyboards');
 
-    return new Promise<void>(async (resolve) => {
-      const keyboardDirList = await FileUtils.listDir(this.smm, '~/homebrew/keyboards/');
+    return new Promise<void>(async (resolve, reject) => {
+      FileUtils.listDir(this.smm, '~/homebrew/keyboards/').then(async (keyboardDirList) => {
+        for (const dirEntry of keyboardDirList) {
+          if (!dirEntry.isDir) continue;
+          await this.loadKeyboard(dirEntry.name);
+        }
 
-      for (const dirEntry of keyboardDirList) {
-        if (!dirEntry.isDir) continue;
-        await this.loadKeyboard(dirEntry.name);
-      }
-
-      resolve();
+        resolve();
+      }).catch((err) => {
+        reject(err);
+      });
     });
   };
 
-  private loadKeyboard = async (name: string) => {
+  private loadKeyboard = async (name: string): Promise<void> => {
     console.log(`CCK::CustomKeyboards::loadKeyboard(${name})`);
 
-    const keyboardPath = '~/homebrew/keyboards/' + name;
-    const keyboardJson = await FileUtils.readFile(this.smm, keyboardPath + '/keyboard.json');
-    const keyboard = JSON.parse(keyboardJson);
-    if (keyboard['name'] && keyboard['class']) {
-      this.keyboardEntries.push({
-        name: keyboard['name'],
-        class: keyboard['class'],
-        cssPath: keyboardPath + '/keyboard.css',
+    return new Promise<void>(async (resolve) => {
+      const keyboardPath = '~/homebrew/keyboards/' + name;
+      FileUtils.readFile(this.smm, keyboardPath + '/keyboard.json').then((keyboardJson) => {
+        const keyboard = JSON.parse(keyboardJson);
+        if (keyboard['name'] && keyboard['class']) {
+          console.log('CCK::Loadkeyboard Loaded ', keyboard['class']);
+          this.keyboardEntries.push({
+            name: keyboard['name'],
+            class: keyboard['class'],
+            cssPath: keyboardPath + '/keyboard.css',
+          });
+        }
+        resolve();
+      }).catch((err) => {
+        console.log('CCK::Error loading keyboard: ', err);
+        resolve();
       });
-    }
+    });
   };
 }
