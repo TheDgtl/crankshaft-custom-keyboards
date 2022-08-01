@@ -19,7 +19,7 @@ export class FileUtils {
     return new Promise<DirEntry[]>(async (resolve, reject) => {
       let dirEntries: DirEntry[] = [];
 
-      const result = await smm.Exec.run('bash', ['-c', `ls -1 ${path}`]);
+      const result = await smm.Exec.run('bash', ['-c', `ls -1 "${path}"`]);
 
       if (result.exitCode !== 0) {
         reject(result.stderr);
@@ -28,7 +28,7 @@ export class FileUtils {
 
       const dirList = result.stdout.split(/\r?\n/);
       for (const name of dirList) {
-        const isDir = await smm.Exec.run('bash', ['-c', '[ -d ${path}/${name} ] && echo 1 || echo 0']);
+        const isDir = await smm.Exec.run('bash', ['-c', '[ -d "${path}/${name}" ] && echo 1 || echo 0']);
         dirEntries.push({
           name: name,
           isDir: isDir.stdout === '1',
@@ -41,7 +41,7 @@ export class FileUtils {
 
   static readFile = async (smm: SMM, path: string): Promise<string> => {
     return new Promise<string>(async (resolve, reject) => {
-      const result = await smm.Exec.run('bash', ['-c', `cat ${path}`]);
+      const result = await smm.Exec.run('bash', ['-c', `cat "${path}"`]);
 
       if (result.exitCode === 0) {
         resolve(result.stdout);

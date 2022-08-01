@@ -8,6 +8,7 @@
 import { SMM } from '../types/smm';
 import { CustomKeyboards } from './customkeyboards';
 import { PatchMethods } from './patchmethods';
+import { SettingsObserver } from './settingsobserver';
 
 export const PLUGIN_ID = 'crankshaft-custom-keyboards';
 
@@ -16,23 +17,27 @@ export const load = async (smm: SMM) => {
 
   const keyboards = CustomKeyboards.getInstance(smm);
   const patchMethods = PatchMethods.getInstance(smm, keyboards, window.userProfileStore);
+  const settingsObserver = SettingsObserver.getInstance(smm);
 
-  // Load all of our keyboards
-  keyboards.loadKeyboards().then(async () => {
-    // Load our saved keyboard if one is set
-    keyboards.setCustomKeyboard(await smm.Store.get(PLUGIN_ID, 'customKeyboard'));
+  // Attach our settings observer
+  const boundReloadKeyboards = reloadKeyboards.bind(null, smm, keyboards, patchMethods);
+  settingsObserver.attachObserver(boundReloadKeyboards);
 
-    // Patch all of our userProfileStore methods
-    patchMethods.patchUserProfileStore();
+  // Patch the userProfileStore keyboard methods
+  patchMethods.patchUserProfileStore();
 
-    console.info('CCK::Loaded');
-  }).catch((err) => {
-    console.log('CCK::Error loading keyboards: ', err);
-  });
+  // Load our keyboards
+  await reloadKeyboards(smm, keyboards, patchMethods);
+
+  console.info('CCK::Loaded');
 };
 
 export const unload = (smm: SMM) => {
   console.log('CCK::unload');
+
+  // Remove our settings observer
+  const settingsObserver = SettingsObserver.getInstance(smm);
+  settingsObserver.detachObserver();
 
   // Restore the original keyboard skin functions
   const keyboards = CustomKeyboards.getInstance(smm);
@@ -44,3 +49,21 @@ export const unload = (smm: SMM) => {
 
   console.info('CCK::Unloaded');
 };
+
+const reloadKeyboards = (smm: SMM, keyboards: CustomKeyboards, patchMethods: PatchMethods): Promise<void> => {
+  return new Promise<void>((resolve) => {
+    // Load all of our keyboards
+    keyboards.loadKeyboards().then(async () => {
+      // Load our saved keyboard if one is set
+      keyboards.setCustomKeyboard(await smm.Store.get(PLUGIN_ID, 'customKeyboard'));
+
+      resolve();
+    }).catch((err) => {
+      console.log('CCK::Error loading keyboards: ', err);
+      resolve();
+    }).finally(() => {
+      // Refresh the keyboard UI
+      patchMethods.refreshKeyboards();
+    });
+  });
+}

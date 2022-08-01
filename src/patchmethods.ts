@@ -51,15 +51,6 @@ export class PatchMethods {
     this.userProfileStore.EquipKeyboardSkin = this.CustomEquipKeyboardSkin;
     this.userProfileStore.GetKeyboardSkinTheme = this.CustomGetKeyboardSkinTheme;
     this.userProfileStore.ForceRefreshEquippedItems = this.CustomForceRefreshEquippedItems;
-
-    // Force a refresh of the keyboard list in Settings
-    this.userProfileStore.m_keyboardSkins = undefined;
-
-    // If we have an equipped keyboard, force an item refresh and equip it
-    if (this.keyboards.getCustomKeyboard()) {
-      this.userProfileStore.ForceRefreshEquippedItems();
-      this.userProfileStore.EquipKeyboardSkin(this.keyboards.getCustomKeyboard());
-    }
   }
 
   unpatchUserProfileStore() {
@@ -76,6 +67,17 @@ export class PatchMethods {
     // Force a refresh of the keyboards
     this.userProfileStore.m_keyboardSkins = undefined;
     this.userProfileStore._ForceRefreshEquippedItems.call(this.userProfileStore);
+  }
+
+  refreshKeyboards = () => {
+    // Force a refresh of the keyboard list in Settings
+    this.userProfileStore.m_keyboardSkins = undefined;
+
+    // If we have an equipped keyboard, force an item refresh and equip it
+    if (this.keyboards.getCustomKeyboard()) {
+      this.userProfileStore.ForceRefreshEquippedItems();
+      this.userProfileStore.EquipKeyboardSkin(this.keyboards.getCustomKeyboard());
+    }
   }
 
   CustomGetKeyboardSkins = () => {

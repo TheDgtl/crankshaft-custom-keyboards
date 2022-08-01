@@ -19,8 +19,8 @@
     "package": "npm run build && tar cvf ${npm_package_name}-${npm_package_version}.tar.gz --transform \"s,^,${npm_package_name}/,\" `npm run --silent get-bundle`",
     "get-bundle": "node -e \"var fs = require('fs'); var config = JSON.parse(fs.readFileSync('./package.json')); console.log(config.config.bundle.join(' '));\""
   },
-  "dependencies": {},
   "devDependencies": {
+    "dom-chef": "^5.1.0",
     "esbuild": "^0.14.30",
     "prettier": "^2.6.2",
     "prettier-plugin-organize-imports": "^2.3.4",

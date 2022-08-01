@@ -48,9 +48,11 @@ export class CustomKeyboards {
 
   loadKeyboards = (): Promise<void> => {
     console.log('CCK::CustomKeyboards::loadKeyboards');
+    
+    this.keyboardEntries = [];
 
     return new Promise<void>(async (resolve, reject) => {
-      FileUtils.listDir(this.smm, '~/homebrew/keyboards/').then(async (keyboardDirList) => {
+      FileUtils.listDir(this.smm, '$HOME/homebrew/keyboards/').then(async (keyboardDirList) => {
         for (const dirEntry of keyboardDirList) {
           if (!dirEntry.isDir) continue;
           await this.loadKeyboard(dirEntry.name);
@@ -67,7 +69,7 @@ export class CustomKeyboards {
     console.log(`CCK::CustomKeyboards::loadKeyboard(${name})`);
 
     return new Promise<void>(async (resolve) => {
-      const keyboardPath = '~/homebrew/keyboards/' + name;
+      const keyboardPath = '$HOME/homebrew/keyboards/' + name;
       FileUtils.readFile(this.smm, keyboardPath + '/keyboard.json').then((keyboardJson) => {
         const keyboard = JSON.parse(keyboardJson);
         if (keyboard['name'] && keyboard['class']) {
