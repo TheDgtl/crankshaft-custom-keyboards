@@ -5,7 +5,7 @@
  * Distributed under the GNU GPL v3. For full terms see the file LICENSE.
  */
 
-import { SMM } from '../types/smm';
+import { SMM } from '@crankshaft/types';
 
 export type DirEntry = {
   name: string;

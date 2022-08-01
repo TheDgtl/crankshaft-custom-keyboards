@@ -5,7 +5,7 @@
  * Distributed under the GNU GPL v3. For full terms see the file LICENSE.
  */
 
-import { SMM } from '../types/smm';
+import { SMM } from '@crankshaft/types';
 import { CustomKeyboards } from './customkeyboards';
 import { FileUtils } from './fileutils';
 import { PLUGIN_ID } from './index';

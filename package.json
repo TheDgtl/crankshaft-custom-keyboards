@@ -20,6 +20,7 @@
     "get-bundle": "node -e \"var fs = require('fs'); var config = JSON.parse(fs.readFileSync('./package.json')); console.log(config.config.bundle.join(' '));\""
   },
   "devDependencies": {
+    "@crankshaft/types": "^0.2.2",
     "dom-chef": "^5.1.0",
     "esbuild": "^0.14.30",
     "prettier": "^2.6.2",
