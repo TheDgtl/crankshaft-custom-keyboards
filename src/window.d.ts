@@ -23,6 +23,7 @@ declare global {
         GetObject: (key: string) => Promise<Object>;
       };
     };
+    FocusNavController: any;
   }
 }
 

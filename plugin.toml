@@ -2,7 +2,7 @@ name = "Custom Keyboards"
 version = "0.0.1"
 link = "https://github.com/TheDgtl/crankshaft-custom-keyboards"
 source = "https://github.com/TheDgtl/crankshaft-custom-keyboards"
-min-crankshaft-version = "0.2.1"
+min-crankshaft-version = "0.2.2"
 
 [author]
 name = "DrakiaXYZ"

@@ -11,7 +11,7 @@ export class SettingsObserver {
   private smm: SMM;
   private observer: MutationObserver | undefined;
   private static instance: SettingsObserver;
-  private KEYBOARD_SETTINGS_SELECTOR = '[class^=keyboardsettings_KeyboardThemeButtons]';
+  private KEYBOARD_SETTINGS_CLASS = 'keyboardsettings_KeyboardThemeButtons';
 
   // We use a singleton instance, because my vars in index.ts were being blown away on reload
   static getInstance(smm: SMM) {
@@ -30,10 +30,10 @@ export class SettingsObserver {
   attachObserver = async (reloadKeyboards: () => void) => {
     console.log('CCK::SettingsObserver::attachObserver');
     this.observer = new MutationObserver(this.patchSettings);
-
     this.observer.observe(document.body, { subtree: true, childList: true });
 
-    // Get Steam slider component
+    // Get Steam button component
+    // Note: This is completely unsafe, and only works with unminified code
     const modules = await (this.smm.Patch as any).getModules();
     const buttonComponent = Object.values(modules[2].c['7ast'].exports).find((a: any) => {
       return a.render?.toString().includes('type: "button"') && a.render?.toString().includes('DialogButton');
@@ -53,21 +53,24 @@ export class SettingsObserver {
       callback: (origFunc, react, ...args) => {
         if (
           args.length >= 1 &&
-          args[1]?.className?.includes('keyboardsettings_KeyboardThemeButtons') &&
+          args[1]?.className?.includes(this.KEYBOARD_SETTINGS_CLASS) &&
           args[1].children
         ) {
-          console.log("refresh");
           args[1].children.splice(
             0,
             0,
             react.createElement(() => {
               return react.createElement(buttonComponent, {
-                onClick: reloadKeyboards,
+                onClick: () => {
+                  // Store the dropdown node, so we can focus it, as Steam loses focus when we refresh
+                  const dropdownNode = window.FocusNavController?.m_LastActiveNavTree?.GetLastFocusedNode()?.Parent?.FindNextFocusableChildInDirection(0, 1);
+                  reloadKeyboards();
+                  dropdownNode?.BTakeFocus();
+                },
               }, "Refresh");
             })
           );
         }
-        return origFunc(...args);
       },
     });
   };
@@ -91,7 +94,7 @@ export class SettingsObserver {
 
   private patchSettings = () => {
     // Look for the keyboardsettings element, and modify it if we haven't already
-    const settingsElement = document.querySelector(this.KEYBOARD_SETTINGS_SELECTOR);
+    const settingsElement = document.querySelector(`[class^=${this.KEYBOARD_SETTINGS_CLASS}]`);
     if (settingsElement && !settingsElement.hasAttribute('data-cck-settings')) {
       console.log('CCK::SettingsObserver Found element');
       settingsElement.setAttribute('data-cck-settings', '');
@@ -114,10 +117,10 @@ export class SettingsObserver {
   }
 
   private getDropdownTextElement = (settingsElement: Element) => {
-    return settingsElement.children[0]?.children[0]?.children[0] as HTMLElement;
+    return settingsElement.children[1]?.children[0]?.children[0] as HTMLElement;
   }
 
   private getDropdownSpacerElement = (settingsElement: Element) => {
-    return settingsElement.children[0]?.children[0]?.children[1] as HTMLElement;
+    return settingsElement.children[1]?.children[0]?.children[1] as HTMLElement;
   }
 }
