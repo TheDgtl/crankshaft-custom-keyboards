@@ -12,6 +12,7 @@ export class SettingsObserver {
   private observer: MutationObserver | undefined;
   private static instance: SettingsObserver;
   private KEYBOARD_SETTINGS_CLASS = 'keyboardsettings_KeyboardThemeButtons';
+  private patchCreateElement: any;
 
   // We use a singleton instance, because my vars in index.ts were being blown away on reload
   static getInstance(smm: SMM) {
@@ -40,6 +41,30 @@ export class SettingsObserver {
     });
 
     // Patch the 'createElement' method, so we can inject our own control in the settings panel
+    this.patchCreateElement = (_origFunc: (...args: any[]) => any, react: any, ...args: any[]) => {
+      if (
+        args?.length >= 1 &&
+        args[1]?.className?.includes?.(this.KEYBOARD_SETTINGS_CLASS) &&
+        args[1]?.children?.length === 2
+      ) {
+        args[1].children.splice(
+          0,
+          0,
+          react.createElement(() => {
+            return react.createElement(buttonComponent, {
+              'data-cck-element': true,
+              onClick: () => {
+                // Store the dropdown node, so we can focus it, as Steam loses focus when we refresh
+                const dropdownNode = window.FocusNavController?.m_LastActiveNavTree?.GetLastFocusedNode?.()?.Parent?.FindNextFocusableChildInDirection?.(0, 1);
+                reloadKeyboards();
+                dropdownNode?.BTakeFocus?.();
+              },
+            }, "Refresh");
+          })
+        );
+      }
+    };
+
     await this.smm.Patch.patchExportFromContents({
       contents: [
         'useState',
@@ -50,27 +75,9 @@ export class SettingsObserver {
         'createElement',
       ],
       export: 'createElement',
+      // We wrap this so we can no-op patchCreateElement on unload
       callback: (origFunc, react, ...args) => {
-        if (
-          args.length >= 1 &&
-          args[1]?.className?.includes(this.KEYBOARD_SETTINGS_CLASS) &&
-          args[1].children
-        ) {
-          args[1].children.splice(
-            0,
-            0,
-            react.createElement(() => {
-              return react.createElement(buttonComponent, {
-                onClick: () => {
-                  // Store the dropdown node, so we can focus it, as Steam loses focus when we refresh
-                  const dropdownNode = window.FocusNavController?.m_LastActiveNavTree?.GetLastFocusedNode()?.Parent?.FindNextFocusableChildInDirection(0, 1);
-                  reloadKeyboards();
-                  dropdownNode?.BTakeFocus();
-                },
-              }, "Refresh");
-            })
-          );
-        }
+        this.patchCreateElement(origFunc, react, ...args);
       },
     });
   };
@@ -79,8 +86,8 @@ export class SettingsObserver {
     console.log('CCK::SettingsObserver::detachObserver');
     this.observer?.disconnect();
 
-    // Remove any elements we created
-    document.querySelector('[data-cck-element]')?.remove();
+    // No-op our patch method, since we can't unpatch currently
+    this.patchCreateElement = () => {};
 
     // Undo any changes we made, in case we're still on the settings panel
     const settingsElement = document.querySelector('[data-cck-settings]');

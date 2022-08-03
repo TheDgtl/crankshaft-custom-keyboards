@@ -7,8 +7,6 @@
 		"isolatedModules": true,
 		"esModuleInterop": true,
 		"moduleResolution": "node",
-		"jsxFactory": "h",
-		"jsxFragmentFactory": "DocumentFragment",
 		"jsx": "react"
 	},
 	"include": ["src/**/*"]
