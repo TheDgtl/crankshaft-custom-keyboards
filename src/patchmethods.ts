@@ -6,7 +6,7 @@
  */
 
 import { SMM } from '@crankshaft/types';
-import { CustomKeyboards } from './customkeyboards';
+import { CustomKeyboards, baseKeyboardSkins } from './customkeyboards';
 import { FileUtils } from './fileutils';
 import { PLUGIN_ID } from './index';
 
@@ -151,21 +151,39 @@ export class PatchMethods {
         }
       });
     } else {
-      // Otherwise, clear the custom keyboard, and fall back to the original implementation
-      this.keyboards.setCustomKeyboard(undefined);
-      return this.userProfileStore._EquipKeyboardSkin.call(this.userProfileStore, skinId);
+      // To allow for keeping an official keyboard while offline, we'll still store the keyboard
+      // in our customKeyboard storage, but we'll also call the official Equip method if online
+      this.keyboards.setCustomKeyboard(skinId);
+      this.smm.Store.set(PLUGIN_ID, 'customKeyboard', skinId);
+
+      // If we're online, update our equipped item. Otherwise just return a complete promise
+      if (window.SystemNetworkStore.hasSteamConnection) {
+        return this.userProfileStore._EquipKeyboardSkin.call(this.userProfileStore, skinId);
+      } else {
+        return new Promise<boolean>(async (resolve) => {resolve(true);});
+      }
     }
   };
 
   CustomGetKeyboardSkinTheme = (): string => {
     console.log('CCK::PatchMethods::CustomGetKeyboardSkinTheme');
 
-    // If a custom keyboard is set, return its ID minus the 'cck_'
+    // If a custom keyboard is set
     if (this.keyboards.getCustomKeyboard()) {
-      return this.keyboards.getCustomKeyboard().substring(4);
-    } else {
-      return this.userProfileStore._GetKeyboardSkinTheme.call(this.userProfileStore);
+      // And it starts with cck_, return it minus the prefix
+      if (this.keyboards.getCustomKeyboard().startsWith('cck_')) {
+        return this.keyboards.getCustomKeyboard().substring(4);
+      } else {
+        // Otherwise pull what keyboard it is from our list of base keyboards if found
+        if (this.keyboards.getCustomKeyboard() in baseKeyboardSkins)
+        {
+          return baseKeyboardSkins[this.keyboards.getCustomKeyboard()];
+        }
+      }
     }
+
+    // If we made it this far, fall back to the base function
+    return this.userProfileStore._GetKeyboardSkinTheme.call(this.userProfileStore);
   };
 
   CustomForceRefreshEquippedItems = (): void => {

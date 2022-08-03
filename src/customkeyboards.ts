@@ -14,6 +14,28 @@ export type KeyboardEntry = {
   cssPath: string;
 };
 
+export const baseKeyboardSkins: any = {
+  "0": "DefaultTheme",
+  "21194357487": "NightShift",
+  "21194357488": "Candy",
+  "21194357489": "SteamGreen",
+  "21194357490": "DEX",
+  "21406307404": "Digital",
+  "21406309993": "Cerulean",
+  "21696697703": "Pumpkin",
+  "21696697692": "Grape",
+  "21696697700": "Seafoam",
+  "21696697696": "Ruby",
+  "21696697687": "Spectrum",
+  "21696697689": "TotallyTubular",
+
+  // Unreleased
+  "Lounger": "Lounger",
+  "TwoTone": "TwoTone",
+  "Celebration": "Celebration",
+  "TestChamber": "TestChamber"
+};
+
 export class CustomKeyboards {
   private smm: SMM;
   private keyboardEntries: KeyboardEntry[] = [];

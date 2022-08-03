@@ -23,6 +23,9 @@ declare global {
         GetObject: (key: string) => Promise<Object>;
       };
     };
+    SystemNetworkStore: {
+      hasSteamConnection: boolean;
+    };
     FocusNavController: any;
   }
 }

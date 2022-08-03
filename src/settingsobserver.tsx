@@ -47,6 +47,12 @@ export class SettingsObserver {
         args[1]?.className?.includes?.(this.KEYBOARD_SETTINGS_CLASS) &&
         args[1]?.children?.length === 2
       ) {
+        // Force-enable the keyboard dropdown, so we can change keyboards even while offline
+        if (args[1].children[0].props) {
+          args[1].children[0].props.disabled = false;
+        }
+
+        // Create and inject our "Refresh" button
         args[1].children.splice(
           0,
           0,
