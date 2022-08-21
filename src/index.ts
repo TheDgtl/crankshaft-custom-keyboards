@@ -13,7 +13,7 @@ import { SettingsObserver } from './settingsobserver';
 export const PLUGIN_ID = 'crankshaft-custom-keyboards';
 
 export const load = async (smm: SMM) => {
-  console.log('CCK::load');
+  console.info('CCK::load');
 
   const keyboards = CustomKeyboards.getInstance(smm);
   const patchMethods = PatchMethods.getInstance(smm, keyboards, window.userProfileStore);
@@ -33,7 +33,7 @@ export const load = async (smm: SMM) => {
 };
 
 export const unload = (smm: SMM) => {
-  console.log('CCK::unload');
+  console.info('CCK::unload');
 
   // Remove our settings observer
   const settingsObserver = SettingsObserver.getInstance(smm);
@@ -59,7 +59,7 @@ const reloadKeyboards = (smm: SMM, keyboards: CustomKeyboards, patchMethods: Pat
 
       resolve();
     }).catch((err) => {
-      console.log('CCK::Error loading keyboards: ', err);
+      console.error('CCK::Error loading keyboards: ', err);
       resolve();
     }).finally(() => {
       // Refresh the keyboard UI

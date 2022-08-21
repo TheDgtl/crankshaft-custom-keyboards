@@ -52,7 +52,7 @@ export class CustomKeyboards {
   }
 
   constructor(smm: SMM) {
-    console.log('CCK::CustomKeyboards::constructor');
+    console.debug('CCK::CustomKeyboards::constructor');
     this.smm = smm;
   }
 
@@ -69,7 +69,7 @@ export class CustomKeyboards {
   };
 
   loadKeyboards = (): Promise<void> => {
-    console.log('CCK::CustomKeyboards::loadKeyboards');
+    console.debug('CCK::CustomKeyboards::loadKeyboards');
     
     this.keyboardEntries = [];
 
@@ -88,14 +88,14 @@ export class CustomKeyboards {
   };
 
   private loadKeyboard = async (name: string): Promise<void> => {
-    console.log(`CCK::CustomKeyboards::loadKeyboard(${name})`);
+    console.debug(`CCK::CustomKeyboards::loadKeyboard(${name})`);
 
     return new Promise<void>(async (resolve) => {
       const keyboardPath = '$HOME/homebrew/keyboards/' + name;
       FileUtils.readFile(this.smm, keyboardPath + '/keyboard.json').then((keyboardJson) => {
         const keyboard = JSON.parse(keyboardJson);
         if (keyboard['name'] && keyboard['class']) {
-          console.log('CCK::Loadkeyboard Loaded ', keyboard['class']);
+          console.debug('CCK::Loadkeyboard Loaded ', keyboard['class']);
           this.keyboardEntries.push({
             name: keyboard['name'],
             class: keyboard['class'],
@@ -104,7 +104,7 @@ export class CustomKeyboards {
         }
         resolve();
       }).catch((err) => {
-        console.log('CCK::Error loading keyboard: ', err);
+        console.error('CCK::Error loading keyboard: ', err);
         resolve();
       });
     });

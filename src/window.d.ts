@@ -1,6 +1,5 @@
 declare global {
   interface Window {
-    webpackJsonp: any;
     userProfileStore: {
       GetKeyboardSkins: () => any;
       EquipKeyboardSkin: (skinId: string) => Promise<boolean>;

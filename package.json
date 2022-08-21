@@ -16,11 +16,11 @@
     "format": "prettier src --write",
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js",
     "build-watch": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --watch",
-    "package": "npm run build && tar cvf ${npm_package_name}-${npm_package_version}.tar.gz --transform \"s,^,${npm_package_name}/,\" `npm run --silent get-bundle`",
+    "package": "npm run build && tar cvzf ${npm_package_name}-${npm_package_version}.tar.gz --transform \"s,^,${npm_package_name}/,\" `npm run --silent get-bundle`",
     "get-bundle": "node -e \"var fs = require('fs'); var config = JSON.parse(fs.readFileSync('./package.json')); console.log(config.config.bundle.join(' '));\""
   },
   "devDependencies": {
-    "@crankshaft/types": "^0.2.2",
+    "@crankshaft/types": "^0.2.4",
     "@types/react": "^16.14.29",
     "esbuild": "^0.14.51",
     "prettier": "^2.7.1",

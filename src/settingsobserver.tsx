@@ -12,7 +12,7 @@ export class SettingsObserver {
   private observer: MutationObserver | undefined;
   private static instance: SettingsObserver;
   private KEYBOARD_SETTINGS_CLASS = 'keyboardsettings_KeyboardThemeButtons';
-  private patchCreateElement: any;
+  private patchAddr: any;
 
   // We use a singleton instance, because my vars in index.ts were being blown away on reload
   static getInstance(smm: SMM) {
@@ -24,54 +24,41 @@ export class SettingsObserver {
   }
 
   constructor(smm: SMM) {
-    console.log('CCK::SettingsObserver::constructor');
+    console.debug('CCK::SettingsObserver::constructor');
     this.smm = smm;
   }
 
   attachObserver = async (reloadKeyboards: () => void) => {
-    console.log('CCK::SettingsObserver::attachObserver');
+    console.debug('CCK::SettingsObserver::attachObserver');
     this.observer = new MutationObserver(this.patchSettings);
     this.observer.observe(document.body, { subtree: true, childList: true });
 
-    // Get Steam button component
-    // Note: This is completely unsafe, and only works with unminified code
-    const modules = await (this.smm.Patch as any).getModules();
-    const buttonComponent = Object.values(modules[2].c['7ast'].exports).find((a: any) => {
-      return a.render?.toString().includes('type: "button"') && a.render?.toString().includes('DialogButton');
+    // Find the module that contains a bunch of UI elements, by looking for modules with a lot
+    // of exports, and looking for the one containing an export that contains "validateEmail"
+    const modules = await this.smm.Patch.getModules();
+    const uiModule = Object.values(modules).find((module: any) => {
+      // Skip anything that isn't an object
+      if (typeof module !== 'object' || !module) return false;
+      
+      // Skip anything with less than 60 keys
+      if (Object.keys(module).length < 60) return false;
+
+      // Look for any property that contains the property "validateEmail"
+      for (const property in module) {
+        if (module[property]?.validateEmail) {
+          return true;
+        }
+      }
+
+      return false;
     });
 
-    // Patch the 'createElement' method, so we can inject our own control in the settings panel
-    this.patchCreateElement = (_origFunc: (...args: any[]) => any, react: any, ...args: any[]) => {
-      if (
-        args?.length >= 1 &&
-        args[1]?.className?.includes?.(this.KEYBOARD_SETTINGS_CLASS) &&
-        args[1]?.children?.length === 2
-      ) {
-        // Force-enable the keyboard dropdown, so we can change keyboards even while offline
-        if (args[1].children[0].props) {
-          args[1].children[0].props.disabled = false;
-        }
+    const buttonComponent = Object.values(uiModule).find((property: any) => {
+      const renderString = property.render?.toString();
+      return renderString?.includes('type: "button"') && renderString?.includes('DialogButton');
+    });
 
-        // Create and inject our "Refresh" button
-        args[1].children.splice(
-          0,
-          0,
-          react.createElement(() => {
-            return react.createElement(buttonComponent, {
-              'data-cck-element': true,
-              onClick: () => {
-                // Store the dropdown node, so we can focus it, as Steam loses focus when we refresh
-                const dropdownNode = window.FocusNavController?.m_LastActiveNavTree?.GetLastFocusedNode?.()?.Parent?.FindNextFocusableChildInDirection?.(0, 1);
-                reloadKeyboards();
-                dropdownNode?.BTakeFocus?.();
-              },
-            }, "Refresh");
-          })
-        );
-      }
-    };
-
-    await this.smm.Patch.patchExportFromContents({
+    this.patchAddr = await this.smm.Patch.patchExportFromContents({
       contents: [
         'useState',
         'useEffect',
@@ -81,19 +68,47 @@ export class SettingsObserver {
         'createElement',
       ],
       export: 'createElement',
-      // We wrap this so we can no-op patchCreateElement on unload
       callback: (origFunc, react, ...args) => {
-        this.patchCreateElement(origFunc, react, ...args);
+        // Watch for the createElement call for the keyboard settings
+        if (
+          args?.length >= 1 &&
+          args[1]?.className?.includes?.(this.KEYBOARD_SETTINGS_CLASS) &&
+          args[1]?.children?.length === 2
+        ) {
+          // Force-enable the keyboard dropdown, so we can change keyboards even while offline
+          if (args[1].children[0].props) {
+            args[1].children[0].props.disabled = false;
+          }
+  
+          // Create and inject our "Refresh" button
+          args[1].children.splice(
+            0,
+            0,
+            react.createElement(() => {
+              return react.createElement(buttonComponent, {
+                'data-cck-element': true,
+                onClick: () => {
+                  // Store the dropdown node, so we can focus it, as Steam loses focus when we refresh
+                  const dropdownNode = window.FocusNavController?.m_LastActiveNavTree?.GetLastFocusedNode?.()?.Parent?.FindNextFocusableChildInDirection?.(0, 1);
+                  reloadKeyboards();
+                  dropdownNode?.BTakeFocus?.();
+                },
+              }, "Refresh");
+            })
+          );
+        }
       },
     });
   };
 
   detachObserver = () => {
-    console.log('CCK::SettingsObserver::detachObserver');
+    console.debug('CCK::SettingsObserver::detachObserver');
     this.observer?.disconnect();
 
-    // No-op our patch method, since we can't unpatch currently
-    this.patchCreateElement = () => {};
+    // Unpatch createElement
+    if (this.patchAddr) {
+      this.smm.Patch.removePatch(this.patchAddr);
+    }
 
     // Undo any changes we made, in case we're still on the settings panel
     const settingsElement = document.querySelector('[data-cck-settings]');
@@ -109,7 +124,7 @@ export class SettingsObserver {
     // Look for the keyboardsettings element, and modify it if we haven't already
     const settingsElement = document.querySelector(`[class^=${this.KEYBOARD_SETTINGS_CLASS}]`);
     if (settingsElement && !settingsElement.hasAttribute('data-cck-settings')) {
-      console.log('CCK::SettingsObserver Found element');
+      console.debug('CCK::SettingsObserver Found element');
       settingsElement.setAttribute('data-cck-settings', '');
 
       // Set the parent elements width to 100%, this drops the settings below the title

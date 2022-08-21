@@ -27,7 +27,7 @@ export class PatchMethods {
   }
 
   constructor(smm: SMM, keyboards: CustomKeyboards, userProfileStore: typeof window.userProfileStore) {
-    console.log('CCK::PatchMethods::constructor');
+    console.debug('CCK::PatchMethods::constructor');
 
     this.smm = smm;
     this.keyboards = keyboards;
@@ -44,7 +44,7 @@ export class PatchMethods {
   }
 
   patchUserProfileStore() {
-    console.log('CCK::PatchMethods::patchUserProfileStore');
+    console.debug('CCK::PatchMethods::patchUserProfileStore');
 
     // Override the keyboard skin functions with our own
     this.userProfileStore.GetKeyboardSkins = this.CustomGetKeyboardSkins;
@@ -54,7 +54,7 @@ export class PatchMethods {
   }
 
   unpatchUserProfileStore() {
-    console.log('CCK::PatchMethods::unpatchUserProfileStore');
+    console.debug('CCK::PatchMethods::unpatchUserProfileStore');
 
     // Restore the original keyboard skin functions
     if (this.userProfileStore._GetKeyboardSkins) {
@@ -81,7 +81,7 @@ export class PatchMethods {
   }
 
   CustomGetKeyboardSkins = () => {
-    console.log('CCK::PatchMethods::CustomGetKeyboardSkins');
+    console.debug('CCK::PatchMethods::CustomGetKeyboardSkins');
 
     // Re-implement the original GetKeyboardSkins, but inject our skins into the list after fetching
     // the owned profile items
@@ -110,7 +110,7 @@ export class PatchMethods {
   };
 
   CustomEquipKeyboardSkin = (skinId: string): Promise<boolean> => {
-    console.log('CCK::PatchMethods::CustomEquipKeyboardSkin');
+    console.debug('CCK::PatchMethods::CustomEquipKeyboardSkin');
 
     // Clear any CSS we've injected
     document.getElementById('cck_style')?.remove();
@@ -140,13 +140,13 @@ export class PatchMethods {
               resolve(true);
             })
             .catch((err) => {
-              console.log('CCK::Error loading keyboard CSS: ', err);
+              console.error('CCK::Error loading keyboard CSS: ', err);
               resolve(false);
             });
         } else {
           // If we couldn't find the selected keyboard, clear the custom keyboard
           this.keyboards.setCustomKeyboard(undefined);
-          console.log('CCK::Error finding custom keyboard ', skinId);
+          console.error('CCK::Error finding custom keyboard ', skinId);
           resolve(false);
         }
       });
@@ -166,7 +166,7 @@ export class PatchMethods {
   };
 
   CustomGetKeyboardSkinTheme = (): string => {
-    console.log('CCK::PatchMethods::CustomGetKeyboardSkinTheme');
+    console.debug('CCK::PatchMethods::CustomGetKeyboardSkinTheme');
 
     // If a custom keyboard is set
     if (this.keyboards.getCustomKeyboard()) {
@@ -187,7 +187,7 @@ export class PatchMethods {
   };
 
   CustomForceRefreshEquippedItems = (): void => {
-    console.log('CCK::PatchMethods::CustomForceRefreshEquippedItems');
+    console.debug('CCK::PatchMethods::CustomForceRefreshEquippedItems');
 
     // Call the base ForceRefreshEquippedItems, and hook into its promise
     this.userProfileStore._ForceRefreshEquippedItems.call(this.userProfileStore);
