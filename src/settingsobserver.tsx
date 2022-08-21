@@ -38,7 +38,7 @@ export class SettingsObserver {
     const modules = await this.smm.Patch.getModules();
     const uiModule = Object.values(modules).find((module: any) => {
       // Skip anything that isn't an object
-      if (typeof module !== 'object' || !module) return false;
+      if (!module || typeof module !== 'object') return false;
       
       // Skip anything with less than 60 keys
       if (Object.keys(module).length < 60) return false;
